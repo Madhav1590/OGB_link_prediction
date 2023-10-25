@@ -43,21 +43,6 @@ def local_neg_sample(pos_edges, num_nodes, num_neg, random_src=False):
         (neg_src, neg_dst), dim=-1), (-1, num_neg, 2))
 
 
-# def local_dist_neg_sample(pos_edges, num_neg, neg_table, random_src=True):
-#     if random_src:
-#         neg_src = pos_edges[torch.arange(pos_edges.size(0)), torch.randint(
-#             0, 2, (pos_edges.size(0),), dtype=torch.long)]
-#     else:
-#         neg_src = pos_edges[:, 0]
-#     neg_src = torch.reshape(neg_src, (-1, 1)).repeat(1, num_neg)
-#     neg_src = torch.reshape(neg_src, (-1,))
-#     neg_dst_index = torch.randint(
-#         0, neg_table.size(0), (num_neg * pos_edges.size(0),), dtype=torch.long)
-#     neg_dst = neg_table[neg_dst_index]
-#     return torch.reshape(torch.stack(
-#         (neg_src, neg_dst), dim=-1), (-1, num_neg, 2))
-
-
 def sample_perm_copy(edge_index, target_num_sample, num_perm_copy):
     src = edge_index[0]
     dst = edge_index[1]
