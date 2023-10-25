@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import math
 import torch
+import time
 from torch.utils.data import DataLoader
+from torch_cluster import random_walk
 from layer import *
 from loss import *
 from utils import *
@@ -189,3 +191,96 @@ def create_predictor_layer(hidden_channels, num_layers, dropout=0, predictor_nam
         return MLPBilPredictor(hidden_channels, 1, num_layers, dropout)
     elif predictor_name == 'MLPCAT':
         return MLPCatPredictor(hidden_channels, hidden_channels, 1, num_layers, dropout)
+
+
+
+def run_link_prediction(data, split_edge, model, evaluator, logger, eval_metric, batch_size=65536,
+                        runs=10, epochs=1000, lr=0.001, neg_sampler='random', num_neg=1, eval_steps=1,
+                        log_steps=1, random_walk_augment=False, walk_start_type='edge'):
+
+    device = f'cuda:0' if torch.cuda.is_available() else 'cpu'
+    device = torch.device(device)
+    data = data.to(device)
+
+    if eval_metric == 'hits':
+        loggers = {
+            'Hits@20': logger(runs),
+            'Hits@50': logger(runs),
+            'Hits@100': logger(runs),
+        }
+
+    elif eval_metric == 'mrr':
+        loggers = {
+            'MRR': logger(runs),
+        }
+
+    if random_walk_augment:
+        rw_row, rw_col, _ = data.adj_t.coo()
+        if walk_start_type == 'edge':
+            rw_start = torch.reshape(split_edge['train']['edge'], (-1,)).to(device)
+        else:
+            rw_start = torch.arange(0, data.num_nodes, dtype=torch.long).to(device)
+
+    cur_lr = lr
+    for run in range(runs):
+        print(f'run: {run}')
+        model.param_init()
+        start_time = time.time()
+
+        for epoch in range(1, 1 + epochs):
+            print(f'epoch: {epoch}')
+            if random_walk_augment:
+                walk = random_walk(rw_row, rw_col, rw_start, walk_length=5)
+                pairs = []
+                weights = []
+                for j in range(5):
+                    pairs.append(walk[:, [0, j + 1]])
+                    weights.append(torch.ones((walk.size(0),), dtype=torch.float) / (j + 1))
+                pairs = torch.cat(pairs, dim=0)
+                weights = torch.cat(weights, dim=0)
+                # remove self-loop edges
+                mask = ((pairs[:, 0] - pairs[:, 1]) != 0)
+                split_edge['train']['edge'] = torch.masked_select(pairs, mask.view(-1, 1)).view(-1, 2)
+                split_edge['train']['weight'] = torch.masked_select(weights, mask)
+
+            print(f'Training Started')
+            loss = model.train(data, split_edge,
+                               batch_size=batch_size,
+                               neg_sampler_name=neg_sampler,
+                               num_neg=num_neg)
+            print(f'Training completed')
+            print(f'Loss: {loss}\n\n')
+            if epoch % eval_steps == 0:
+                results = model.test(data, split_edge,
+                                     batch_size=batch_size,
+                                     evaluator=evaluator,
+                                     eval_metric=eval_metric)
+                for key, result in results.items():
+                    loggers[key].add_result(run, result)
+
+                if epoch % log_steps == 0:
+                    spent_time = time.time() - start_time
+                    for key, result in results.items():
+                        valid_res, test_res = result
+                        to_print = (f'Run: {run + 1:02d}, '
+                                    f'Epoch: {epoch:02d}, '
+                                    f'Loss: {loss:.4f}, '
+                                    f'Learning Rate: {cur_lr:.4f}, '
+                                    f'Valid: {100 * valid_res:.2f}%, '
+                                    f'Test: {100 * test_res:.2f}%')
+                        print(key)
+                        print(to_print)
+                    print('---')
+                    print(
+                        f'Training Time Per Epoch: {spent_time / eval_steps: .4f} s')
+                    print('---')
+                    start_time = time.time()
+
+        for key in loggers.keys():
+            print(key)
+            loggers[key].print_statistics(run, last_best=False)
+            print('-'*100)
+
+    for key in loggers.keys():
+        print(key)
+        loggers[key].print_statistics(last_best=False)
