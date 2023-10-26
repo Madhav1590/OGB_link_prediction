@@ -6,7 +6,7 @@ The code is mostly borrowed from the implementation of Pairwise Learning for Neu
 **Example Usage:**
 ```
 from dataset import load_dataset
-from model import Model
+from model import Model, run_link_prediction
 from layer import GCN
 from logger import Logger
 
