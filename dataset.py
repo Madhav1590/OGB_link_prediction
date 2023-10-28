@@ -11,10 +11,12 @@ def load_dataset(dataset_name):
     evaluator = Evaluator(name=dataset_name)
 
     if hasattr(data, 'edge_weight'):
-        data.edge_weight = data.edge_weight.view(-1).to(torch.float)
+        if data.edge_weight is not None:
+            data.edge_weight = data.edge_weight.view(-1).to(torch.float)
 
     if hasattr(data, 'x'):
-        data.x = data.x.to(torch.float)
+        if data.x is not None:
+            data.x = data.x.to(torch.float)
 
     if dataset_name == 'ogbl-citation2':
         data.adj_t = data.adj_t.to_symmetric()
