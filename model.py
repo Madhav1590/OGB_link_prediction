@@ -13,7 +13,7 @@ class Model(object):
     def __init__(self, data, 
                  encoder, gnn_hidden_channels, gnn_num_layers, 
                  predictor, mlp_hidden_channels, mlp_num_layers, 
-                 loss_fn='ce-loss', optimizer='Adam', lr=0.001, dropout=0.0, train_node_emb=False):
+                 loss_fn='ce_loss', optimizer='Adam', lr=0.001, dropout=0.0, train_node_emb=False):
         
         device = f'cuda:0' if torch.cuda.is_available() else 'cpu'
         self.device = torch.device(device)
@@ -82,6 +82,8 @@ class Model(object):
             loss = weighted_hinge_auc_loss(pos_out, neg_out, num_neg, margin)
         elif self.loss_fn == 'ce_loss':
             loss = ce_loss(pos_out, neg_out)
+        else:
+            raise NotImplementedError
         return loss
 
     def train(self, data, split_edge, batch_size, neg_sampler_name, num_neg):
