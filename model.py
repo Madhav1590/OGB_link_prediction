@@ -33,12 +33,12 @@ class Model(object):
             self.emb = torch.nn.Embedding(self.num_nodes, gnn_hidden_channels)
             self.input_dim = gnn_hidden_channels
 
-        self.encoder = encoder(self.input_dim, gnn_hidden_channels, gnn_hidden_channels, gnn_num_layers, dropout).to(device)
-        self.predictor = create_predictor_layer(mlp_hidden_channels, mlp_num_layers, dropout, predictor).to(device)
+        self.encoder = encoder(self.input_dim, gnn_hidden_channels, gnn_hidden_channels, gnn_num_layers, dropout).to(self.device)
+        self.predictor = create_predictor_layer(mlp_hidden_channels, mlp_num_layers, dropout, predictor).to(self.device)
     
         self.para_list = list(self.encoder.parameters()) + list(self.predictor.parameters())
         if self.emb is not None:
-            self.emb = self.emb.to(device)
+            self.emb = self.emb.to(self.device)
             self.para_list += list(self.emb.parameters())
 
         if optimizer == 'AdamW':
