@@ -16,7 +16,7 @@ class Model(object):
                  loss_fn='ce-loss', optimizer='Adam', lr=0.001, dropout=0.0, train_node_emb=False):
         
         device = f'cuda:0' if torch.cuda.is_available() else 'cpu'
-        device = torch.device(device)
+        self.device = torch.device(device)
 
         self.loss_fn = loss_fn
         self.num_nodes = data.num_nodes
