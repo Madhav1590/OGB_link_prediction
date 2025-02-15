@@ -1,6 +1,5 @@
 # OGB_link_prediction
 
-The structure of the code is partly borrowed and modified from the implementation of Pairwise Learning for Neural Link Prediction (PLNLP) framework by [zhitao-wang](https://github.com/zhitao-wang/PLNLP/)
 
 
 **Example Usage:**
